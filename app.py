@@ -4,6 +4,10 @@ from PIL import Image
 import math
 import os
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+IMAGE_TYPES = [("Képek", "*.png *.jpg *.jpeg *.bmp *.webp")]
+
+
 class ImageComparer:
     def __init__(self, root):
         self.root = root
@@ -36,31 +40,23 @@ class ImageComparer:
         self.label3 = tk.Label(root, text="Nincs kiválasztva")
         self.label3.pack()
 
-        tk.Button(
-            root,
-            text="Export",
-            command=self.export,
-            bg="lightgreen"
-        ).pack(pady=15)
+        tk.Button(root, text="Export", command=self.export, bg="lightgreen").pack(pady=15)
 
     def select_image1(self):
-        path = filedialog.askopenfilename(
-            filetypes=[("Képek", "*.png *.jpg *.jpeg *.bmp *.webp")]
-        )
+        path = filedialog.askopenfilename(initialdir=BASE_DIR, filetypes=IMAGE_TYPES)
         if path:
             self.image1_path = path
             self.label1.config(text=os.path.basename(path))
 
     def select_image2(self):
-        path = filedialog.askopenfilename(
-            filetypes=[("Képek", "*.png *.jpg *.jpeg *.bmp *.webp")]
-        )
+        path = filedialog.askopenfilename(initialdir=BASE_DIR, filetypes=IMAGE_TYPES)
         if path:
             self.image2_path = path
             self.label2.config(text=os.path.basename(path))
 
     def select_output(self):
         path = filedialog.asksaveasfilename(
+            initialdir=BASE_DIR,
             defaultextension=".png",
             filetypes=[("PNG", "*.png")]
         )
@@ -85,24 +81,19 @@ class ImageComparer:
         img2 = Image.open(self.image2_path).convert("RGBA")
 
         if img1.size != img2.size:
-            messagebox.showerror(
-                "Hiba",
-                "A két kép mérete nem egyezik."
-            )
+            messagebox.showerror("Hiba", "A két kép mérete nem egyezik.")
             return
 
         width, height = img1.size
-
-        min_alpha = self.min_opacity.get() / 100.0
-
         result = Image.new("RGBA", (width, height))
 
-        max_distance = math.sqrt(3 * (255 ** 2))
+        min_alpha = self.min_opacity.get() / 100.0
+        max_distance = math.sqrt(3 * 255 * 255)
 
         for y in range(height):
             for x in range(width):
-                r1, g1, b1, a1 = img1.getpixel((x, y))
-                r2, g2, b2, a2 = img2.getpixel((x, y))
+                r1, g1, b1, _ = img1.getpixel((x, y))
+                r2, g2, b2, _ = img2.getpixel((x, y))
 
                 distance = math.sqrt(
                     (r1 - r2) ** 2 +
@@ -112,24 +103,21 @@ class ImageComparer:
 
                 difference = distance / max_distance
                 similarity = 1.0 - difference
-
                 alpha = min_alpha + similarity * (1.0 - min_alpha)
-
-                r = (r1 + r2) // 2
-                g = (g1 + g2) // 2
-                b = (b1 + b2) // 2
 
                 result.putpixel(
                     (x, y),
-                    (r, g, b, int(alpha * 255))
+                    (
+                        (r1 + r2) // 2,
+                        (g1 + g2) // 2,
+                        (b1 + b2) // 2,
+                        int(alpha * 255)
+                    )
                 )
 
         result.save(self.output_path)
+        messagebox.showinfo("Kész", f"Sikeresen exportálva:\n{self.output_path}")
 
-        messagebox.showinfo(
-            "Kész",
-            f"Sikeresen exportálva:\n{self.output_path}"
-        )
 
 root = tk.Tk()
 root.geometry("450x350")
